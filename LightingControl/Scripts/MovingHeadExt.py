@@ -112,7 +112,7 @@ class MovingHeadExt:
 	def ReCaptureAtIndex(self, target, panTilt, panTiltOffset, distance, index):
 		self.targetList.setItem(index,target)
 		self.panTiltList.setItem(index,panTilt)
-		self.panTiltOffsetList.setItem(panTiltOffset)
+		self.panTiltOffsetList.setItem(index,panTiltOffset)
 		self.distanceList.setItem(index,distance)
 
 	def DeleteCapture(self, index):
@@ -213,5 +213,5 @@ class MovingHeadExt:
 		pan = math.degrees(math.atan2(position[0],position[1]))
 		# sollinger resorted
 		pan = math.degrees(math.atan(position[0]))
-		tilt = math.degrees(math.atan(position[1]) * math.cos(math.radians(pan)))
+		tilt = math.degrees(math.atan(position[1] * math.cos(math.radians(pan))))
 		return [pan,tilt]
