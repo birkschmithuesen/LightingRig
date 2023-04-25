@@ -36,6 +36,7 @@ class MovingHeadExt:
 
 		self.Homography = None
 		TDF.createProperty(self, 'h_targetList', value=list(), dependable="deep", readOnly=False)
+		TDF.createProperty(self, 'PanTiltDirection', value=list(parent.MovingHead.parGroup.Pantiltdirection.eval()), dependable="deep", readOnly=False)
 
 	def CreateJSONConfig(self, file):
 		json_config = {}
@@ -54,6 +55,7 @@ class MovingHeadExt:
 		json_config["DataPoints"] = datapoints
 
 		json_config["Homography"] = self.Homography.tolist()
+		json_config["PanTiltDirection"] = list(self.PanTiltDirection)
 
 		with open(file, 'w') as jsonFile:
 			json.dump(json_config,jsonFile)
@@ -87,6 +89,11 @@ class MovingHeadExt:
 			self.h_targetList.append(homog_target)
 
 		self.Homography = np.array(parsed_json["Homography"])
+		try:
+			self.PanTiltDirection = parsed_json["PanTiltDirection"]
+		except:
+			self.PanTiltDirection = list(0,90) # setting standard
+			debug("No PanTiltDirection par, old config")
 
 	def math_range(value, in_range, out_range):
 		return np.interp(value,in_range, out_range)
@@ -162,22 +169,9 @@ class MovingHeadExt:
 		self.h_targetList = list()
 		mhs_homography_points = list()
 		for pan_tilt in targets_moving_head_space:
-			pan = pan_tilt[0]
-			tilt = pan_tilt[1]
+			pan = pan_tilt[0] + self.PanTiltDirection[0]
+			tilt = pan_tilt[1] + self.PanTiltDirection[1]
 
-			#sollinger
-			#x = math.tan(math.radians(pan)) / math.cos(math.radians(tilt))
-			#y = math.tan(math.radians(tilt))
-
-			# azimuth elevation, normally on xyz
-			#x = math.cos(pan) * math.cos(tilt)
-			#y = math.sin(pan) * math.cos(tilt)
-
-			# uv from az and el
-			#x = math.cos(math.radians(tilt)) * math.sin(math.radians(pan))
-			#y = math.cos(math.radians(tilt)) * math.cos(math.radians(pan))
-
-			# sollinger resorted
 			x = math.tan(math.radians(pan))
 			y = math.tan(math.radians(tilt)) / math.cos(math.radians(pan))
 
@@ -204,14 +198,6 @@ class MovingHeadExt:
 		return dest_point
 	
 	def CalcPanTilt(self, position):
-		# sollinger
-		tilt = math.degrees(math.atan(position[1]))
-		pan = math.degrees(math.atan(position[0]*math.cos(math.radians(tilt))))
-		# xyz to azimuth and elevation
-		distance = math.sqrt(position[0]**2 + position[1]**2 + 1**2)
-		tilt = math.degrees(math.acos(1/distance))
-		pan = math.degrees(math.atan2(position[0],position[1]))
-		# sollinger resorted
-		pan = math.degrees(math.atan(position[0]))
-		tilt = math.degrees(math.atan(position[1] * math.cos(math.radians(pan))))
+		pan = math.degrees(math.atan(position[0])) + self.PanTiltDirection[0]
+		tilt = math.degrees(math.atan(position[1] * math.cos(math.radians(pan)))) + self.PanTiltDirection[1]
 		return [pan,tilt]
