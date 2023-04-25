@@ -92,7 +92,7 @@ class MovingHeadExt:
 		try:
 			self.PanTiltDirection = parsed_json["PanTiltDirection"]
 		except:
-			self.PanTiltDirection = list(0,90) # setting standard
+			self.PanTiltDirection = list((0,90)) # setting standard
 			debug("No PanTiltDirection par, old config")
 
 	def math_range(value, in_range, out_range):
