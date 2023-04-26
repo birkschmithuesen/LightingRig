@@ -26,36 +26,63 @@ class MovingHeadExt:
 
 		TDF.createProperty(self, 'Position', value=list(parent.MovingHead.parGroup.Position.eval()), dependable="deep", readOnly=False)	
 		TDF.createProperty(self, 'Rotation', value=list(parent.MovingHead.parGroup.Rotation.eval()), dependable="deep", readOnly=False)
-		
-		TDF.createProperty(self, 'targetList', value=list(), dependable="deep", readOnly=False)
-		TDF.createProperty(self, 'panTiltList', value=list(), dependable="deep", readOnly=False)
-		TDF.createProperty(self, 'panTiltOffsetList', value=list(), dependable="deep", readOnly=False)
-		TDF.createProperty(self, 'distanceList', value=list(), dependable="deep", readOnly=False)
+
+		TDF.createProperty(self, 'PanTiltDirection', value=list(parent.MovingHead.parGroup.Pantiltdirection.eval()), dependable="deep", readOnly=False)
+
+		TDF.createProperty(self, 'targetListTop', value=list(), dependable="deep", readOnly=False)
+		TDF.createProperty(self, 'panTiltListTop', value=list(), dependable="deep", readOnly=False)
+		TDF.createProperty(self, 'panTiltOffsetListTop', value=list(), dependable="deep", readOnly=False)
+		TDF.createProperty(self, 'distanceListTop', value=list(), dependable="deep", readOnly=False)
+		TDF.createProperty(self, 'h_targetListTop', value=list(), dependable="deep", readOnly=False)
+		self.HomographyTop = None
+
+		TDF.createProperty(self, 'targetListBtm', value=list(), dependable="deep", readOnly=False)
+		TDF.createProperty(self, 'panTiltListBtm', value=list(), dependable="deep", readOnly=False)
+		TDF.createProperty(self, 'panTiltOffsetListBtm', value=list(), dependable="deep", readOnly=False)
+		TDF.createProperty(self, 'distanceListBtm', value=list(), dependable="deep", readOnly=False)
+		TDF.createProperty(self, 'h_targetListBtm', value=list(), dependable="deep", readOnly=False)
+		self.HomographyBtm = None
+
+		self.HomographyLeft = None
+		self.HomographyRight = None
 
 		self.DMXStartingAddress = tdu.Dependency(parent.MovingHead.par.Dmxstartingaddress.val)
-
-		self.Homography = None
-		TDF.createProperty(self, 'h_targetList', value=list(), dependable="deep", readOnly=False)
-		TDF.createProperty(self, 'PanTiltDirection', value=list(parent.MovingHead.parGroup.Pantiltdirection.eval()), dependable="deep", readOnly=False)
 
 	def CreateJSONConfig(self, file):
 		json_config = {}
 		json_config["Position"] = list(self.Position)
 		json_config["Rotation"] = list(self.Rotation)
-		json_config["DMXStartingAddress"] = self.DMXStartingAddress.val
-		datapoints = []
-		for i in range(len(self.targetList)):
-			datapoint_dict = dict()
-			datapoint_dict["Target"] = self.GetTarget(i)
-			datapoint_dict["PanTilt"] = self.GetPanTilt(i)
-			datapoint_dict["PanTiltOffset"] = self.GetPanTiltOffset(i)
-			datapoint_dict["Distance"] = self.GetDistance(i)
-			datapoint_dict["HomogTarget"] = self.GetHomogTarget(i)
-			datapoints.append(datapoint_dict)
-		json_config["DataPoints"] = datapoints
 
-		json_config["Homography"] = self.Homography.tolist()
 		json_config["PanTiltDirection"] = list(self.PanTiltDirection)
+
+		datapoints_top = []
+		for i in range(len(self.targetListTop)):
+			datapoint_dict = dict()
+			datapoint_dict["Target"] = self.GetTarget(i,'top')
+			datapoint_dict["PanTilt"] = self.GetPanTilt(i,'top')
+			datapoint_dict["PanTiltOffset"] = self.GetPanTiltOffset(i,'top')
+			datapoint_dict["Distance"] = self.GetDistance(i,'top')
+			datapoint_dict["HomogTarget"] = self.GetHomogTarget(i,'top')
+			datapoints_top.append(datapoint_dict)
+		json_config["DataPointsTop"] = datapoints_top
+
+		datapoints_btm = []
+		for i in range(len(self.targetListBtm)):
+			datapoint_dict = dict()
+			datapoint_dict["Target"] = self.GetTarget(i,'btm')
+			datapoint_dict["PanTilt"] = self.GetPanTilt(i,'btm')
+			datapoint_dict["PanTiltOffset"] = self.GetPanTiltOffset(i,'btm')
+			datapoint_dict["Distance"] = self.GetDistance(i,'btm')
+			datapoint_dict["HomogTarget"] = self.GetHomogTarget(i,'btm')
+			datapoints_btm.append(datapoint_dict)
+		json_config["DataPointsBtm"] = datapoints_btm
+
+		json_config["HomographyTop"] = self.HomographyTop.tolist()
+		json_config["HomographyBtm"] = self.HomographyBtm.tolist()
+		json_config["HomographyLeft"] = self.HomographyLeft.tolist()
+		json_config["HomographyRight"] = self.HomographyRight.tolist()
+		
+		json_config["DMXStartingAddress"] = self.DMXStartingAddress.val
 
 		with open(file, 'w') as jsonFile:
 			json.dump(json_config,jsonFile)
@@ -73,126 +100,214 @@ class MovingHeadExt:
 
 		self.Position = parsed_json["Position"]
 		self.Rotation = parsed_json["Rotation"]
-		self.DMXStartingAddress.val = parsed_json["DMXStartingAddress"]
-		#self.fillParFromJSON(self.Rotation,parsed_json,"Rotation")
-		#self.fillParFromJSON(self.DMXStartingAddress,parsed_json,"DMXStartingAddress")
-		
-		data_points = parsed_json["DataPoints"]
-		self.h_targetList = list()
-		for data_point in data_points:
-			target = data_point.get("Target")
-			pan_tilt = data_point.get("PanTilt")
-			pan_tilt_offset = data_point.get("PanTiltOffset")
-			distance = data_point.get("Distane")
-			homog_target = data_point.get("HomogTarget")
-			self.AddCapture(target, pan_tilt, pan_tilt_offset, distance)
-			self.h_targetList.append(homog_target)
 
-		self.Homography = np.array(parsed_json["Homography"])
 		try:
 			self.PanTiltDirection = parsed_json["PanTiltDirection"]
 		except:
 			self.PanTiltDirection = list((0,90)) # setting standard
 			debug("No PanTiltDirection par, old config")
+		
+		datapoints_top = parsed_json["DataPointsTop"]
+		self.h_targetListTop = list()
+		for datapoint in datapoints_top:
+			target = datapoint.get("Target")
+			pan_tilt = datapoint.get("PanTilt")
+			pan_tilt_offset = datapoint.get("PanTiltOffset")
+			distance = datapoint.get("Distane")
+			homog_target = datapoint.get("HomogTarget")
+			self.AddCapture(target, pan_tilt, pan_tilt_offset, distance, 'top')
+			self.h_targetListTop.append(homog_target)
+
+		datapoints_btm = parsed_json["DataPointsBtm"]
+		self.h_targetListBtm = list()
+		for datapoint in datapoints_btm:
+			target = datapoint.get("Target")
+			pan_tilt = datapoint.get("PanTilt")
+			pan_tilt_offset = datapoint.get("PanTiltOffset")
+			distance = datapoint.get("Distane")
+			homog_target = datapoint.get("HomogTarget")
+			self.AddCapture(target, pan_tilt, pan_tilt_offset, distance, 'btm')
+			self.h_targetListBtm.append(homog_target)
+
+		self.HomographyTop = np.array(parsed_json["HomographyTop"])
+		self.HomographyBtm = np.array(parsed_json["HomographyBtm"])
+		self.HomographyLeft = np.array(parsed_json["HomographyLeft"])
+		self.HomographyRight = np.array(parsed_json["HomographyRight"])
+
+		self.DMXStartingAddress.val = parsed_json["DMXStartingAddress"]
+
 
 	def math_range(value, in_range, out_range):
 		return np.interp(value,in_range, out_range)
 	
-	def addTargetItem(self, target):
-		self.targetList.append(target)
+	def addTargetItem(self, target, type):
+		if type == 'top':
+			self.targetListTop.append(target)
+		elif type == 'btm':
+			self.targetListBtm.append(target)
 
-	def addPanTiltItem(self, panTilt):
-		self.panTiltList.append(panTilt)
+	def addPanTiltItem(self, panTilt, type):
+		if type == 'top':
+			self.panTiltListTop.append(panTilt)
+		elif type == 'btm':
+			self.panTiltListBtm.append(panTilt)
 
-	def addPanTiltOffsetItem(self, panTiltOffset):
-		self.panTiltOffsetList.append(panTiltOffset)
+	def addPanTiltOffsetItem(self, panTiltOffset, type):
+		if type == 'top':
+			self.panTiltOffsetListTop.append(panTiltOffset)
+		elif type == 'btm':
+			self.panTiltOffsetListBtm.append(panTiltOffset)
 	
-	def addDistanceItem(self, distance):
-		self.distanceList.append(distance)
+	def addDistanceItem(self, distance, type):
+		if type == 'top':
+			self.distanceListTop.append(distance)
+		elif type == 'btm':
+			self.distanceListBtm.append(distance)
 	
-	def AddCapture(self, target, panTilt, panTiltOffset, distance):
-		self.addTargetItem(target)
-		self.addPanTiltItem(panTilt)
-		self.addPanTiltOffsetItem(panTiltOffset)
-		self.addDistanceItem(distance)
+	def AddCapture(self, target, panTilt, panTiltOffset, distance, type):
+		self.addTargetItem(target, type)
+		self.addPanTiltItem(panTilt, type)
+		self.addPanTiltOffsetItem(panTiltOffset, type)
+		self.addDistanceItem(distance, type)
 
-	def ReCaptureAtIndex(self, target, panTilt, panTiltOffset, distance, index):
-		self.targetList.setItem(index,target)
-		self.panTiltList.setItem(index,panTilt)
-		self.panTiltOffsetList.setItem(index,panTiltOffset)
-		self.distanceList.setItem(index,distance)
+	def ReCaptureAtIndex(self, target, panTilt, panTiltOffset, distance, index, type):
+		if type == 'top':
+			self.targetListTop.setItem(index,target)
+			self.panTiltListTop.setItem(index,panTilt)
+			self.panTiltOffsetListTop.setItem(index,panTiltOffset)
+			self.distanceListTop.setItem(index,distance)
+		elif type == 'btm':
+			self.targetListBtm.setItem(index,target)
+			self.panTiltListBtm.setItem(index,panTilt)
+			self.panTiltOffsetListBtm.setItem(index,panTiltOffset)
+			self.distanceListBtm.setItem(index,distance)
 
-	def DeleteCapture(self, index):
-		self.targetList.pop(index)
-		self.panTiltList.pop(index)
-		self.panTiltOffsetList.pop(index)
-		self.distanceList.pop(index)
+	def DeleteCapture(self, index, type):
+		if type == 'top':
+			self.targetListTop.pop(index)
+			self.panTiltListTop.pop(index)
+			self.panTiltOffsetListTop.pop(index)
+			self.distanceListTop.pop(index)
+		elif type == 'btm':
+			self.targetListBtm.pop(index)
+			self.panTiltListBtm.pop(index)
+			self.panTiltOffsetListBtm.pop(index)
+			self.distanceListBtm.pop(index)
 
-	def DeleteLastCapture(self):
-		self.targetList.pop(len(self.targetList)-1)
-		self.panTiltList.pop(len(self.panTiltList)-1)
-		self.panTiltOffsetList.pop(len(self.panTiltOffsetList)-1)
-		self.distanceList.pop(len(self.distanceList)-1)
+	def DeleteLastCapture(self, type):
+		if type == 'top':
+			self.targetListTop.pop(len(self.targetListTop)-1)
+			self.panTiltListTop.pop(len(self.panTiltListTop)-1)
+			self.panTiltOffsetListTop.pop(len(self.panTiltOffsetListTop)-1)
+			self.distanceListTop.pop(len(self.distanceListTop)-1)
+		elif type == 'btm':
+			self.targetListBtm.pop(len(self.targetListBtm)-1)
+			self.panTiltListBtm.pop(len(self.panTiltListBtm)-1)
+			self.panTiltOffsetListBtm.pop(len(self.panTiltOffsetListBtm)-1)
+			self.distanceListBtm.pop(len(self.distanceListBtm)-1)
 
-	def GetTargetList(self):
-		return self.targetList
+	def GetTargetList(self, type):
+		if type == 'top':
+			return self.targetListTop
+		elif type == 'btm':
+			return self.targetListBtm
 	
-	def GetPanTiltList(self):
-		return self.panTiltList
+	def GetPanTiltList(self, type):
+		if type == 'top':
+			return self.panTiltListTop
+		elif type == 'btm':
+			return self.panTiltListBtm
 	
-	def GetPanTiltOffsetList(self):
-		return self.panTiltOffsetList
+	def GetPanTiltOffsetList(self, type):
+		if type == 'top':
+			return self.panTiltOffsetListTop
+		elif type == 'btm':
+			return self.panTiltOffsetListBtm
 
-	def GetDistanceList(self):
-		return self.distanceList
+	def GetDistanceList(self, type):
+		if type == 'top':
+			return self.distanceListTop
+		elif type == 'btm':
+			return self.distanceListBtm
 	
-	def GetTarget(self, index):
-		return self.targetList.getRaw(index)
+	def GetTarget(self, index, type):
+		if type == 'top':
+			return self.targetListTop.getRaw(index)
+		elif type == 'btm':
+			return self.targetListBtm.getRaw(index)
 	
-	def GetPanTilt(self, index):
-		return self.panTiltList.getRaw(index)
+	def GetPanTilt(self, index, type):
+		if type == 'top':
+			return self.panTiltListTop.getRaw(index)
+		elif type == 'btm':
+			return self.panTiltListBtm.getRaw(index)
 	
-	def GetPanTiltOffset(self, index):
-		return self.panTiltOffsetList.getRaw(index)
+	def GetPanTiltOffset(self, index, type):
+		if type == 'top':
+			return self.panTiltOffsetListTop.getRaw(index)
+		elif type == 'btm':
+			return self.panTiltOffsetListBtm.getRaw(index)
 	
-	def GetDistance(self, index):
-		return self.distanceList.getRaw(index)
+	def GetDistance(self, index, type):
+		if type == 'top':
+			return self.distanceListTop.getRaw(index)
+		elif type == 'btm':
+			return self.distanceListBtm.getRaw(index)
 	
-	def CalcHomography(self):
-		targets_real_space = np.array(self.targetList).reshape(len(self.targetList),3)
-		targets_moving_head_space = np.array(self.panTiltList).reshape(len(self.panTiltList),2)
+	def CalcHomography(self, type):
+		targets_real_space = None
+		targets_moving_head_space = None
+		if type == 'top':
+			targets_real_space = np.array(self.targetListTop).reshape(len(self.targetListTop),3)
+			targets_moving_head_space = np.array(self.panTiltListTop).reshape(len(self.panTiltListTop),2)
+		elif type == 'btm':
+			targets_real_space = np.array(self.targetListBtm).reshape(len(self.targetListBtm),3)
+			targets_moving_head_space = np.array(self.panTiltListBtm).reshape(len(self.panTiltListBtm),2)
 
 		# delete y dimension of targets
 		real_space_homography_points = np.delete(targets_real_space, 1, 1)
 
+		debug(real_space_homography_points)
+		debug(targets_moving_head_space)
+
 		# calculate x and z position from pan tilt for moving head space
-		self.h_targetList = list()
-		mhs_homography_points = list()
+		temp_h_list = list()
 		for pan_tilt in targets_moving_head_space:
 			pan = pan_tilt[0] + self.PanTiltDirection[0]
 			tilt = pan_tilt[1] + self.PanTiltDirection[1]
-
 			x = math.tan(math.radians(pan))
 			y = math.tan(math.radians(tilt)) / math.cos(math.radians(pan))
-
-			self.h_targetList.append([x,y])
-			mhs_homography_points.append([x,y])
-
-		mhs_homography_points = np.array(mhs_homography_points)
-
+			temp_h_list.append([x,y])
+		if type == 'top':
+			self.h_targetListTop = temp_h_list
+		elif type == 'btm':
+			self.h_targetListBtm = temp_h_list
+		
 		# calculate homography
-		self.Homography, s = cv2.findHomography(real_space_homography_points,mhs_homography_points)
-		debug(self.Homography)
+		if type == 'top':
+			self.HomographyTop, s = cv2.findHomography(real_space_homography_points, np.array(temp_h_list))
+		elif type == 'btm':
+			self.HomographyBtm, s = cv2.findHomography(real_space_homography_points, np.array(temp_h_list))
 
-	def GetHomogTargetList(self):
-		return self.h_targetList
+	def GetHomogTargetList(self, type):
+		if type == 'top':
+			return self.h_targetListTop
+		elif type == 'btm':
+			return self.h_targetListBtm
 	
-	def GetHomogTarget(self, index):
-		return self.h_targetList.getRaw(index)
+	def GetHomogTarget(self, index, type):
+		if type == 'top':
+			return self.h_targetListTop.getRaw(index)
+		elif type == 'btm':
+			return self.h_targetListBtm.getRaw(index)
 	
-	def CalcHomogPosition(self, target):
+	def CalcHomogPosition(self, target, type):
+		if type == 'top':
+			homography = self.HomographyTop
+		elif type == 'btm':
+			homography = self.HomographyBtm
 		point = [target[0], target[1], 1]
-		dest_point_homog = np.dot(self.Homography, point)
+		dest_point_homog = np.dot(homography, point)
 		dest_point_eucl = dest_point_homog / dest_point_homog[2]
 		dest_point = dest_point_eucl[:2]
 		return dest_point
