@@ -46,6 +46,8 @@ class MovingHeadExt:
 		self.HomographyLeft = None
 		self.HomographyRight = None
 
+		self.TempHomography = None
+
 		self.DMXStartingAddress = tdu.Dependency(parent.MovingHead.par.Dmxstartingaddress.val)
 
 	def CreateJSONConfig(self, file):
@@ -267,9 +269,6 @@ class MovingHeadExt:
 		# delete y dimension of targets
 		real_space_homography_points = np.delete(targets_real_space, 1, 1)
 
-		debug(real_space_homography_points)
-		debug(targets_moving_head_space)
-
 		# calculate x and z position from pan tilt for moving head space
 		temp_h_list = list()
 		for pan_tilt in targets_moving_head_space:
@@ -300,12 +299,27 @@ class MovingHeadExt:
 			return self.h_targetListTop.getRaw(index)
 		elif type == 'btm':
 			return self.h_targetListBtm.getRaw(index)
+		
+	def CreateTempHomographyFromPanTilt(self, targetList, panTiltList):
+		temp_h_list = list()
+		for pan_tilt in panTiltList:
+			pan = pan_tilt[0] + self.PanTiltDirection[0]
+			tilt = pan_tilt[1] + self.PanTiltDirection[1]
+			x = math.tan(math.radians(pan))
+			y = math.tan(math.radians(tilt)) / math.cos(math.radians(pan))
+			temp_h_list.append([x,y])
+		self.TempHomography, s = cv2.findHomography(targetList, np.array(temp_h_list))
+	
+	def CreateTempHomography(self, targetList, homogList):
+		self.TempHomography, s = cv2.findHomography(targetList, homogList)
 	
 	def CalcHomogPosition(self, target, type):
 		if type == 'top':
 			homography = self.HomographyTop
 		elif type == 'btm':
 			homography = self.HomographyBtm
+		else:
+			homography = self.TempHomography
 		point = [target[0], target[1], 1]
 		dest_point_homog = np.dot(homography, point)
 		dest_point_eucl = dest_point_homog / dest_point_homog[2]
