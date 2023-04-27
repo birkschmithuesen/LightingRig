@@ -272,8 +272,8 @@ class MovingHeadExt:
 		# calculate x and z position from pan tilt for moving head space
 		temp_h_list = list()
 		for pan_tilt in targets_moving_head_space:
-			pan = pan_tilt[0] + self.PanTiltDirection[0]
-			tilt = pan_tilt[1] + self.PanTiltDirection[1]
+			pan = pan_tilt[0]
+			tilt = pan_tilt[1]
 			x = math.tan(math.radians(pan))
 			y = math.tan(math.radians(tilt)) / math.cos(math.radians(pan))
 			temp_h_list.append([x,y])
@@ -303,8 +303,8 @@ class MovingHeadExt:
 	def CreateTempHomographyFromPanTilt(self, targetList, panTiltList):
 		temp_h_list = list()
 		for pan_tilt in panTiltList:
-			pan = pan_tilt[0] + self.PanTiltDirection[0]
-			tilt = pan_tilt[1] + self.PanTiltDirection[1]
+			pan = pan_tilt[0]
+			tilt = pan_tilt[1]
 			x = math.tan(math.radians(pan))
 			y = math.tan(math.radians(tilt)) / math.cos(math.radians(pan))
 			temp_h_list.append([x,y])
@@ -327,6 +327,6 @@ class MovingHeadExt:
 		return dest_point
 	
 	def CalcPanTilt(self, position):
-		pan = math.degrees(math.atan(position[0])) + self.PanTiltDirection[0]
-		tilt = math.degrees(math.atan(position[1] * math.cos(math.radians(pan)))) + self.PanTiltDirection[1]
-		return [pan,tilt]
+		pan = math.degrees(math.atan(position[0]))
+		tilt = math.degrees(math.atan(position[1] * math.cos(math.radians(pan)))) + self.PanTiltDirection.getRaw(1)
+		return [pan + self.PanTiltDirection.getRaw(0),tilt]
