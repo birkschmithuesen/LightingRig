@@ -329,4 +329,11 @@ class MovingHeadExt:
 	def CalcPanTilt(self, position):
 		pan = math.degrees(math.atan(position[0]))
 		tilt = math.degrees(math.atan(position[1] * math.cos(math.radians(pan)))) + self.PanTiltDirection.getRaw(1)
-		return [pan + self.PanTiltDirection.getRaw(0),tilt]
+		pan = pan + self.PanTiltDirection.getRaw(0)
+		if abs(pan) >= 90:
+			debug(now)
+			pan_tmp = pan - self.PanTiltDirection.getRaw(0)
+			tilt_tmp = tilt - self.PanTiltDirection.getRaw(1)
+			pan = pan_tmp * -1
+			tilt = tilt_tmp * -1
+		return [pan ,tilt]
