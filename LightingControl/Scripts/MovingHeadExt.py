@@ -139,8 +139,12 @@ class MovingHeadExt:
 		self.DMXStartingAddress.val = parsed_json["DMXStartingAddress"]
 
 
-	def math_range(value, in_range, out_range):
+	def math_range(self, value, in_range, out_range):
 		return np.interp(value,in_range, out_range)
+
+	def cycle_range(self, start, stop, value):
+		range_size = stop - start
+		return start + ((value - start) % range_size)
 	
 	def addTargetItem(self, target, type):
 		if type == 'top':
@@ -274,8 +278,25 @@ class MovingHeadExt:
 		for pan_tilt in targets_moving_head_space:
 			pan = pan_tilt[0]
 			tilt = pan_tilt[1]
+			# layer way
 			x = math.tan(math.radians(pan))
 			y = math.tan(math.radians(tilt)) / math.cos(math.radians(pan))
+			
+			# spherical representation
+			#x_vector = math.cos(math.radians(pan))
+			#y_vector = math.sin(math.radians(tilt))
+			#xy_vector = tdu.Vector(x_vector,y_vector,0)
+			#length = math.tan(math.radians(tilt/2))
+			#xy = xy_vector * length
+			#x = xy.x
+			#y = xy.y
+
+			# fish eye representation
+			#pan_x = np.interp(pan,(-180,180),(-60,60))
+			#x = math.tan(math.radians(pan_x))
+			#pan_cycle = self.cycle_range(-90,90,pan)
+			#y = math.tan(math.radians(tilt) / math.cos(math.radians(pan_cycle)))
+
 			temp_h_list.append([x,y])
 		if type == 'top':
 			self.h_targetListTop = temp_h_list
@@ -305,8 +326,25 @@ class MovingHeadExt:
 		for pan_tilt in panTiltList:
 			pan = pan_tilt[0]
 			tilt = pan_tilt[1]
+			# laser way
 			x = math.tan(math.radians(pan))
 			y = math.tan(math.radians(tilt)) / math.cos(math.radians(pan))
+
+			# spherical representation
+			#x_vector = math.cos(math.radians(pan))
+			#y_vector = math.sin(math.radians(tilt))
+			#xy_vector = tdu.Vector(x_vector,y_vector,0)
+			#length = math.tan(math.radians(tilt/2))
+			#xy = xy_vector * length
+			#x = xy.x
+			#y = xy.y
+
+			# fish eye representation
+			#pan_x = np.interp(pan,(-180,180),(-60,60))
+			#x = math.tan(math.radians(pan_x))
+			#pan_cycle = self.cycle_range(-90,90,pan)
+			#y = math.tan(math.radians(tilt) / math.cos(math.radians(pan_cycle)))
+
 			temp_h_list.append([x,y])
 		self.TempHomography, s = cv2.findHomography(targetList, np.array(temp_h_list))
 	
@@ -327,13 +365,34 @@ class MovingHeadExt:
 		return dest_point
 	
 	def CalcPanTilt(self, position):
+		# laser way
 		pan = math.degrees(math.atan(position[0]))
 		tilt = math.degrees(math.atan(position[1] * math.cos(math.radians(pan)))) + self.PanTiltDirection.getRaw(1)
 		pan = pan + self.PanTiltDirection.getRaw(0)
-		if abs(pan) >= 90:
-			debug(now)
-			pan_tmp = pan - self.PanTiltDirection.getRaw(0)
-			tilt_tmp = tilt - self.PanTiltDirection.getRaw(1)
-			pan = pan_tmp * -1
-			tilt = tilt_tmp * -1
+		#if abs(pan) >= 90:
+		#	debug(now)
+		#	pan_tmp = pan - self.PanTiltDirection.getRaw(0)
+		#	tilt_tmp = tilt - self.PanTiltDirection.getRaw(1)
+		#	pan = pan_tmp * -1
+		#	tilt = tilt_tmp * -1
+		
+		# spherical representation
+		#vec = tdu.Vector(position[0],position[1],0)
+		#debug("vec", vec)
+		#length = vec.length()
+		#debug("length", length)
+		#vec.normalize()
+		#debug("vec_n", vec)
+		#tilt = math.degrees(math.atan(length)) * 2 
+		#pan = math.degrees(math.acos(vec.x))
+
+		# fish eye
+		#pan_x = math.degrees(math.atan(position[0]))
+		#debug("pan_x",pan_x)
+		#pan = np.interp(pan_x,(-60,60),(-180,180))
+		#debug("pan",pan)
+		#pan_cycle = self.cycle_range(-90,90,pan)
+		#debug("pan_cycle",pan_cycle)
+		#tilt = math.degrees(math.atan(position[1] * math.cos(math.radians(pan_cycle)))) + self.PanTiltDirection.getRaw(1)
+		#pan = pan + self.PanTiltDirection.getRaw(0)
 		return [pan ,tilt]
