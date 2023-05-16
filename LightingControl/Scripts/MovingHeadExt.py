@@ -85,8 +85,10 @@ class MovingHeadExt:
 
 		json_config["HomographyTop"] = self.HomographyTop.tolist()
 		json_config["HomographyBtm"] = self.HomographyBtm.tolist()
-		json_config["HomographyLeft"] = self.HomographyLeft.tolist()
-		json_config["HomographyRight"] = self.HomographyRight.tolist()
+		json_config["HomographySide_1"] = self.HomographySide_1.tolist()
+		json_config["HomographySide_2"] = self.HomographySide_2.tolist()
+
+		json_config["Axis"] = self.Axis.val
 		
 		json_config["DMXStartingAddress"] = self.DMXStartingAddress.val
 
@@ -137,8 +139,10 @@ class MovingHeadExt:
 
 		self.HomographyTop = np.array(parsed_json["HomographyTop"])
 		self.HomographyBtm = np.array(parsed_json["HomographyBtm"])
-		self.HomographyLeft = np.array(parsed_json["HomographyLeft"])
-		self.HomographyRight = np.array(parsed_json["HomographyRight"])
+		self.HomographySide_1 = np.array(parsed_json["HomographySide_1"])
+		self.HomographySide_2 = np.array(parsed_json["HomographySide_2"])
+
+		self.Axis = parsed_json["Axis"]
 
 		self.DMXStartingAddress.val = parsed_json["DMXStartingAddress"]
 
