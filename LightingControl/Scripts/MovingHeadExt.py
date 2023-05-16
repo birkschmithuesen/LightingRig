@@ -43,10 +43,14 @@ class MovingHeadExt:
 		TDF.createProperty(self, 'h_targetListBtm', value=list(), dependable="deep", readOnly=False)
 		self.HomographyBtm = None
 
-		self.HomographyLeft = None
-		self.HomographyRight = None
+		self.HomographySide_1 = None
+		self.HomographySide_2 = None
 
 		self.TempHomography = None
+
+
+		self.Dir = None
+		self.Axis = tdu.Dependency('x')
 
 		self.DMXStartingAddress = tdu.Dependency(parent.MovingHead.par.Dmxstartingaddress.val)
 
@@ -309,6 +313,80 @@ class MovingHeadExt:
 		elif type == 'btm':
 			self.HomographyBtm, s = cv2.findHomography(real_space_homography_points, np.array(temp_h_list))
 
+	def CalcSideHomographies(self):
+		targets_real_space_top = np.array(self.targetListTop).reshape(4,3)
+		targets_moving_head_space_top = np.array(self.panTiltListTop).reshape(4,2)
+		targets_real_space_btm = np.array(self.targetListBtm).reshape(4,3)
+		targets_moving_head_space_btm = np.array(self.panTiltListBtm).reshape(4,2)
+
+		# create sides
+		targets_real_space_side_1_btm = targets_real_space_btm[:-2]
+		targets_real_space_side_1_top = targets_real_space_top[:-2][::-1]
+		targets_real_space_side_1 = np.concatenate((targets_real_space_side_1_btm,targets_real_space_side_1_top), axis=0)
+		targets_real_space_side_2_btm = targets_real_space_btm[2:]
+		targets_real_space_side_2_top = targets_real_space_top[2:][::-1]
+		targets_real_space_side_2 = np.concatenate((targets_real_space_side_2_btm,targets_real_space_side_2_top), axis=0)
+
+		# delete y dimension of targets
+		# # # we need to check in which direction, x or z, the first points differ. or if one of them == 0
+		x_delta = targets_real_space_btm[1][0] - targets_real_space_btm[0][0]
+		z_delta = targets_real_space_btm[1][2] - targets_real_space_btm[0][2]
+
+		if abs(x_delta) > abs(z_delta):
+			self.Dir = 'x'
+			real_space_homography_points_side_1 = np.delete(targets_real_space_side_1, 2, 1)
+			real_space_homography_points_side_2 = np.delete(targets_real_space_side_2, 2, 1)
+		else:
+			self.Dir = 'z'
+			real_space_homography_points_side_1 = np.delete(targets_real_space_side_1, 0, 1)
+			real_space_homography_points_side_2 = np.delete(targets_real_space_side_2, 0, 1)
+
+		
+
+		targets_moving_head_space_side_1_btm = targets_moving_head_space_btm[:-2]
+		targets_moving_head_space_side_1_top = targets_moving_head_space_top[:-2][::-1]
+		targets_moving_head_space_side_1 = np.concatenate((targets_moving_head_space_side_1_btm,targets_moving_head_space_side_1_top), axis=0)
+		targets_moving_head_space_side_2_btm = targets_moving_head_space_btm[2:]
+		targets_moving_head_space_side_2_top = targets_moving_head_space_top[2:][::-1]
+		targets_moving_head_space_side_2 = np.concatenate((targets_moving_head_space_side_2_btm,targets_moving_head_space_side_2_top), axis=0)
+
+		# calculate x and z position from pan tilt for moving head space
+		temp_h_list_side_1 = list()
+		temp_h_list_side_2 = list()
+		for i in range(4):
+			pan_side_1 = targets_moving_head_space_side_1[i][0]
+			tilt_side_1 = targets_moving_head_space_side_1[i][1]
+			pan_side_2 = targets_moving_head_space_side_2[i][0]
+			tilt_side_2 = targets_moving_head_space_side_2[i][1]
+
+			# layer way
+			x_side_1 = math.tan(math.radians(pan_side_1))
+			y_side_1 = math.tan(math.radians(tilt_side_1)) / math.cos(math.radians(pan_side_1))
+			x_side_2 = math.tan(math.radians(pan_side_2))
+			y_side_2 = math.tan(math.radians(tilt_side_2)) / math.cos(math.radians(pan_side_2))
+			
+			# spherical representation
+			#x_vector = math.cos(math.radians(pan))
+			#y_vector = math.sin(math.radians(tilt))
+			#xy_vector = tdu.Vector(x_vector,y_vector,0)
+			#length = math.tan(math.radians(tilt/2))
+			#xy = xy_vector * length
+			#x = xy.x
+			#y = xy.y
+
+			# fish eye representation
+			#pan_x = np.interp(pan,(-180,180),(-60,60))
+			#x = math.tan(math.radians(pan_x))
+			#pan_cycle = self.cycle_range(-90,90,pan)
+			#y = math.tan(math.radians(tilt) / math.cos(math.radians(pan_cycle)))
+
+			temp_h_list_side_1.append([x_side_1,y_side_1])
+			temp_h_list_side_2.append([x_side_2,y_side_2])
+
+		self.HomographySide_1, s_1 = cv2.findHomography(real_space_homography_points_side_1, np.array(temp_h_list_side_1))
+		self.HomographySide_2, s_2 = cv2.findHomography(real_space_homography_points_side_2, np.array(temp_h_list_side_2))
+		debug(self.HomographySide_1,self.HomographySide_2)
+	
 	def GetHomogTargetList(self, type):
 		if type == 'top':
 			return self.h_targetListTop
@@ -356,6 +434,10 @@ class MovingHeadExt:
 			homography = self.HomographyTop
 		elif type == 'btm':
 			homography = self.HomographyBtm
+		elif type == 'side_1':
+			homography = self.HomographySide_1
+		elif type == 'side_2':
+			homography = self.HomographySide_2
 		else:
 			homography = self.TempHomography
 		point = [target[0], target[1], 1]
