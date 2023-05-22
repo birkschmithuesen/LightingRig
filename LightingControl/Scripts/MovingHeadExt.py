@@ -142,7 +142,7 @@ class MovingHeadExt:
 		self.HomographySide_1 = np.array(parsed_json["HomographySide_1"])
 		self.HomographySide_2 = np.array(parsed_json["HomographySide_2"])
 
-		self.Axis = parsed_json["Axis"]
+		self.Axis.val = parsed_json["Axis"]
 
 		self.DMXStartingAddress.val = parsed_json["DMXStartingAddress"]
 
