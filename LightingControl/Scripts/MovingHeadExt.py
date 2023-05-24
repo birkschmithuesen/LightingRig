@@ -34,19 +34,19 @@ class MovingHeadExt:
 		TDF.createProperty(self, 'panTiltOffsetListTop', value=list(), dependable="deep", readOnly=False)
 		TDF.createProperty(self, 'distanceListTop', value=list(), dependable="deep", readOnly=False)
 		TDF.createProperty(self, 'h_targetListTop', value=list(), dependable="deep", readOnly=False)
-		self.HomographyTop = np.array([[.0,.0,.0],[.0,.0,.0],[.0,.0,.0]])
+		self.HomographyTop = np.array([[1.,.0,.0],[.0,1.,.0],[.0,.0,1.]])
 
 		TDF.createProperty(self, 'targetListBtm', value=list(), dependable="deep", readOnly=False)
 		TDF.createProperty(self, 'panTiltListBtm', value=list(), dependable="deep", readOnly=False)
 		TDF.createProperty(self, 'panTiltOffsetListBtm', value=list(), dependable="deep", readOnly=False)
 		TDF.createProperty(self, 'distanceListBtm', value=list(), dependable="deep", readOnly=False)
 		TDF.createProperty(self, 'h_targetListBtm', value=list(), dependable="deep", readOnly=False)
-		self.HomographyBtm = np.array([[.0,.0,.0],[.0,.0,.0],[.0,.0,.0]])
+		self.HomographyBtm = np.array([[1.,.0,.0],[.0,1.,.0],[.0,.0,1.]])
 
-		self.HomographySide_1 = np.array([[.0,.0,.0],[.0,.0,.0],[.0,.0,.0]])
-		self.HomographySide_2 = np.array([[.0,.0,.0],[.0,.0,.0],[.0,.0,.0]])
+		self.HomographySide_1 = np.array([[1.,.0,.0],[.0,1.,.0],[.0,.0,1.]])
+		self.HomographySide_2 = np.array([[1.,.0,.0],[.0,1.,.0],[.0,.0,1.]])
 
-		self.TempHomography = np.array([[.0,.0,.0],[.0,.0,.0],[.0,.0,.0]])
+		self.TempHomography = np.array([[1.,.0,.0],[.0,1.,.0],[.0,.0,1.]])
 
 
 		self.Dir = 'x'
@@ -426,10 +426,18 @@ class MovingHeadExt:
 			#y = math.tan(math.radians(tilt) / math.cos(math.radians(pan_cycle)))
 
 			temp_h_list.append([x,y])
-		self.TempHomography, s = cv2.findHomography(targetList, np.array(temp_h_list))
+		h, s = cv2.findHomography(targetList, np.array(temp_h_list))
+		if h:
+			self.TempHomography = h
+		else:
+			self.TempHomography = np.array([[1.,.0,.0],[.0,1.,.0],[.0,.0,1.]])
 	
 	def CreateTempHomography(self, targetList, homogList):
-		self.TempHomography, s = cv2.findHomography(targetList, homogList)
+		h, s = cv2.findHomography(targetList, homogList)
+		if h:
+			self.TempHomography = h
+		else:
+			self.TempHomography = np.array([[1.,.0,.0],[.0,1.,.0],[.0,.0,1.]])
 	
 	def CalcHomogPosition(self, target, type):
 		if type == 'top':
