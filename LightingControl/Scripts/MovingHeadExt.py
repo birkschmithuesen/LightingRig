@@ -34,22 +34,22 @@ class MovingHeadExt:
 		TDF.createProperty(self, 'panTiltOffsetListTop', value=list(), dependable="deep", readOnly=False)
 		TDF.createProperty(self, 'distanceListTop', value=list(), dependable="deep", readOnly=False)
 		TDF.createProperty(self, 'h_targetListTop', value=list(), dependable="deep", readOnly=False)
-		self.HomographyTop = None
+		self.HomographyTop = np.array([[.0,.0,.0],[.0,.0,.0],[.0,.0,.0]])
 
 		TDF.createProperty(self, 'targetListBtm', value=list(), dependable="deep", readOnly=False)
 		TDF.createProperty(self, 'panTiltListBtm', value=list(), dependable="deep", readOnly=False)
 		TDF.createProperty(self, 'panTiltOffsetListBtm', value=list(), dependable="deep", readOnly=False)
 		TDF.createProperty(self, 'distanceListBtm', value=list(), dependable="deep", readOnly=False)
 		TDF.createProperty(self, 'h_targetListBtm', value=list(), dependable="deep", readOnly=False)
-		self.HomographyBtm = None
+		self.HomographyBtm = np.array([[.0,.0,.0],[.0,.0,.0],[.0,.0,.0]])
 
-		self.HomographySide_1 = None
-		self.HomographySide_2 = None
+		self.HomographySide_1 = np.array([[.0,.0,.0],[.0,.0,.0],[.0,.0,.0]])
+		self.HomographySide_2 = np.array([[.0,.0,.0],[.0,.0,.0],[.0,.0,.0]])
 
-		self.TempHomography = None
+		self.TempHomography = np.array([[.0,.0,.0],[.0,.0,.0],[.0,.0,.0]])
 
 
-		self.Dir = None
+		self.Dir = 'x'
 		self.Axis = tdu.Dependency('x')
 
 		self.DMXStartingAddress = tdu.Dependency(parent.MovingHead.par.Dmxstartingaddress.val)
@@ -93,7 +93,7 @@ class MovingHeadExt:
 		json_config["DMXStartingAddress"] = self.DMXStartingAddress.val
 
 		with open(file, 'w') as jsonFile:
-			json.dump(json_config,jsonFile)
+			json.dump(json_config,jsonFile,indent=4)
 
 	def fillParFromJSON(self, prop, json, key):
 		try:
@@ -344,8 +344,6 @@ class MovingHeadExt:
 			self.Dir = 'z'
 			real_space_homography_points_side_1 = np.delete(targets_real_space_side_1, 0, 1)
 			real_space_homography_points_side_2 = np.delete(targets_real_space_side_2, 0, 1)
-
-		
 
 		targets_moving_head_space_side_1_btm = targets_moving_head_space_btm[:-2]
 		targets_moving_head_space_side_1_top = targets_moving_head_space_top[:-2][::-1]
