@@ -427,14 +427,14 @@ class MovingHeadExt:
 
 			temp_h_list.append([x,y])
 		h, s = cv2.findHomography(targetList, np.array(temp_h_list))
-		if h:
+		if h.any():
 			self.TempHomography = h
 		else:
 			self.TempHomography = np.array([[1.,.0,.0],[.0,1.,.0],[.0,.0,1.]])
 	
 	def CreateTempHomography(self, targetList, homogList):
 		h, s = cv2.findHomography(targetList, homogList)
-		if h:
+		if h.any():
 			self.TempHomography = h
 		else:
 			self.TempHomography = np.array([[1.,.0,.0],[.0,1.,.0],[.0,.0,1.]])
