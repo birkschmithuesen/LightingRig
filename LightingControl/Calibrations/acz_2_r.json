@@ -221,6 +221,6 @@
             0.9999999999999999
         ]
     ],
-    "Axis": "y",
+    "Axis": "z",
     "DMXStartingAddress": 28
 }
