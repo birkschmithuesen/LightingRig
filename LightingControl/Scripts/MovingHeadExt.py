@@ -68,7 +68,10 @@ class MovingHeadExt:
 			datapoint_dict["PanTilt"] = self.GetPanTilt(i,'top')
 			datapoint_dict["PanTiltOffset"] = self.GetPanTiltOffset(i,'top')
 			datapoint_dict["Distance"] = self.GetDistance(i,'top')
-			datapoint_dict["HomogTarget"] = 0 #self.GetHomogTarget(i,'top')
+			try:
+				datapoint_dict["HomogTarget"] = self.GetHomogTarget(i,'top')
+			except:
+				datapoint_dict["HomogTarget"] = [0,0]
 			datapoints_top.append(datapoint_dict)
 		json_config["DataPointsTop"] = datapoints_top
 
@@ -79,7 +82,10 @@ class MovingHeadExt:
 			datapoint_dict["PanTilt"] = self.GetPanTilt(i,'btm')
 			datapoint_dict["PanTiltOffset"] = self.GetPanTiltOffset(i,'btm')
 			datapoint_dict["Distance"] = self.GetDistance(i,'btm')
-			datapoint_dict["HomogTarget"] = 0 #self.GetHomogTarget(i,'btm')
+			try:
+				datapoint_dict["HomogTarget"] = self.GetHomogTarget(i,'btm')
+			except:
+				datapoint_dict["HomogTarget"] = [0,0]
 			datapoints_btm.append(datapoint_dict)
 		json_config["DataPointsBtm"] = datapoints_btm
 
