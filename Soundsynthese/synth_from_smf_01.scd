@@ -35,11 +35,11 @@ SynthDef(\base, {
 
 
 SynthDef(\trigger, {
-	arg gate = 0, freq = 400, xpos = 0, ypos = 0;
+	arg amp = 0.2, gate = 0, freq = 400, xpos = 0, ypos = 0;
     var sig, env;
-	env = EnvGen.kr(Env.perc, gate);
+	env = EnvGen.kr(Env.perc(attackTime:0.01, releaseTime:0.1), gate);
     sig = SinOsc.ar(freq, 0, 0.1);
-	sig = sig * env;
+	sig = sig * env * amp;
 	sig = Pan4.ar(sig, xpos, ypos);
     Out.ar(0, sig)
 }).add;
@@ -58,8 +58,8 @@ SynthDef(\trigger, {
 ~trigger = {arg i; Synth.new(\trigger)}!~numLights;
 
 //change pitches
-~numLights.do{arg i; ~synths[i].set(\freq, 60 + i.linexp(0, 16, 1.0, 300.0).postln);};
-~numLights.do{arg i; ~trigger[i].set(\freq, 60 + i.linexp(0, 16, 400.0, 1000.0));};
+~numLights.do{arg i; ~synths[i].set(\freq, 60 + i.linexp(0, 16, 1.0, 500.0).postln);};
+~numLights.do{arg i; ~trigger[i].set(\freq, 60 + i.linexp(0, 16, 400.0, 600.0));};
 
 
 s.meter;
@@ -151,54 +151,7 @@ OSCFunc({
 
 )
 
-s.meter;
-s.plotTree;
 
-// (-1/-1) => (10 / 0)
-//
+~numLights.do{arg i; ~synths[i].set(\amp, 0.02;)};
 
-~numLights.do{arg i; ~synths[i].set(\xpos, -1);}
-
-
-
-
-)
-
-
-/////////////////////////////////////////
-
-
-(
-a = {
-	arg freq = 1, amp = 0.1;
-	var sig;
-	freq = 100 + (freq * 1000);
-	sig = Saw.ar(freq, amp);
-	Out.ar(0,[sig, sig]);
-}.play;
-)
-
-
-a.set(\freq, 0.1);
-
-
-a.map(1, ~tilt_degree);
-
-
-/////////////////////////////////////////
-
-(
-// something to play with
-SynthDef(\help_Bus, { arg out=0,ffreq=100;
-    var x;
-    x = RLPF.ar(LFPulse.ar(SinOsc.kr(0.2, 0, 10, 21), [0,0.1], 0.1),
-            ffreq, 0.1)
-            .clip2(0.4);
-    Out.ar(out, x);
-}).add;
-
-)
-
-x = Synth(\help_Bus);
-
-
+~numLights.do{arg i; ~trigger[i].set(\amp, 0.5;)};
