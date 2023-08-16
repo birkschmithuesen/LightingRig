@@ -34,6 +34,18 @@ SynthDef(\base, {
 
 
 
+SynthDef(\trigger, {
+	arg gate = 0, freq = 400, xpos = 0, ypos = 0;
+    var sig, env;
+	env = EnvGen.kr(Env.perc, gate);
+    sig = SinOsc.ar(freq, 0, 0.1);
+	sig = sig * env;
+	sig = Pan4.ar(sig, xpos, ypos);
+    Out.ar(0, sig)
+}).add;
+
+
+
 ///////////////////////////////////
 // Synth section
 ///////////////////////////////////
@@ -43,12 +55,16 @@ SynthDef(\base, {
 
 // create synths
 ~synths = {arg i; Synth.new(\base)}!~numLights;
+~trigger = {arg i; Synth.new(\trigger)}!~numLights;
 
 //change pitches
-~numLights.do{arg i; ~synths[i].set(\freq, 60 + (i * 100));};
+~numLights.do{arg i; ~synths[i].set(\freq, 60 + i.linexp(0, 16, 1.0, 300.0).postln);};
+~numLights.do{arg i; ~trigger[i].set(\freq, 60 + i.linexp(0, 16, 400.0, 1000.0));};
 
 
-
+s.meter;
+s.plotTree;
+~trigger[1].set(\gate,1);
 
 
 
@@ -76,7 +92,7 @@ OSCFunc({
 	//msg[1].postln;
 	~numLights.do{
 		arg i;
-		~synths[i].set(\tremolo, msg[i+1].linlin(-1.0, 1.0, 1.0, 20.0));
+		~synths[i].set(\tremolo, msg[i+1].linlin(-1.0, 1.0, 1.0, 50.0));
 	}
 },
 ('/vel_tx')
@@ -119,6 +135,18 @@ OSCFunc({
 	}
 },
 ('/ty')
+);
+
+OSCFunc({
+	arg msg;
+	var val;
+	//msg[1].postln;
+	~numLights.do{
+		arg i;
+		~trigger[i].set(\gate, msg[i+1]);
+	}
+},
+('/colliding')
 );
 
 )
