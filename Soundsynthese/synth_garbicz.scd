@@ -1,6 +1,7 @@
 s.meter;
 ServerOptions.devices;
 s.options.outDevice("3- ZOOM AMS-24 Driver");
+s.options.outDevice("External Headphones");
 
 s.options.numOutputBusChannels = 4;
 s.options.numInputBusChannels = 0;
@@ -19,7 +20,7 @@ s.boot;
 // Synth Def
 ///////////////////////////////////
 
-SynthDef(\base, {
+/*SynthDef(\base, {
 	arg freq = 200, detune = 1.01, amp = 0.01, tremolo = 10, exc = 0.1, xpos = 0, ypos = 0;
 	var sig;
 	//tremolo = In.kr(~tilt_degree).linlin(0,1,5,100);
@@ -34,7 +35,24 @@ SynthDef(\base, {
 	sig = FreeVerb.ar(sig);
 	sig = Pan4.ar(sig, xpos, ypos);
 	Out.ar(0, [sig[3], sig[0], sig[2], sig[1]]);
+}).add;*/
+
+
+SynthDef(\base, {
+    arg freq=440, amp=4, exc = 0.1, xpos = 0, ypos = 0;
+    var noise, env, mod, rustMod, sig;
+    mod = LFNoise1.kr(0.2).range(-100, 100);
+    rustMod = LFNoise2.kr(1).range(-200, 200) * LFNoise1.kr(3).range(0.2, 0.8);
+    noise = WhiteNoise.ar(1) * 0.5 + PinkNoise.ar(1) * 0.5;
+    sig = BPF.ar(noise, freq + mod + rustMod, 0.15);
+    sig = sig.tanh * 0.3 + sig.distort * 0.7; // subtle distortion
+    sig = sig * (1 + SinOsc.kr(0.3, 0, 0.05));
+	sig = sig * exc;
+	//sig = sig + RLPF.ar(LFPulse.ar([48,55].midicps, 0.15), SinOsc.kr(0.1, 0, 10, 72).midicps, 0.1, 0.1);
+	sig = Pan4.ar(sig, xpos, ypos);
+    Out.ar(0, [sig[3], sig[0], sig[2], sig[1]]);
 }).add;
+
 
 
 SynthDef(\trigger, {
@@ -51,6 +69,7 @@ SynthDef(\trigger, {
 	], decay);
 	sig = Mix.ar(sig) * exc * amp;
 	sig = FreeVerb.ar(sig);
+	CombN.ar(sig, 0.31, 0.31, 2, 1, sig);
 	sig = Pan4.ar(sig, xpos, ypos);
 	Out.ar(0, [sig[3], sig[0], sig[2], sig[1]]);
 }).add;
@@ -82,7 +101,15 @@ SynthDef(\trigger, {
 
 //change pitches
 ~numLights.do{arg i; ~synths[i].set(\freq, 60 + i.linexp(0, 16, 1.0, 500.0).postln);};
-~numLights.do{arg i; ~trigger[i].set(\freq, 60 + i.linexp(0, 16, 200.0, 600.0));};
+//~numLights.do{arg i; ~trigger[i].set(\freq, 60 + i.linexp(0, 16, 200.0, 600.0));};
+
+~dorianScale = [0, 2, 3, 5, 7, 9, 10];
+~numLights.do{arg i;
+    var degree = i % 7;
+    var octave = (i / 7).floor;
+    var midiNote = ~dorianScale[degree] + 60 + (octave * 12);
+    ~trigger[i].set(\freq, midiNote.midicps);
+};
 
 
 s.meter;
@@ -99,7 +126,7 @@ s.plotTree;
 OSCFunc({
 	arg msg;
 	var val;
-	//msg[1].postln;
+	msg[1].postln;
 	~numLights.do{
 		arg i;
 		~synths[i].set(\exc, msg[i+1]);
@@ -116,7 +143,7 @@ OSCFunc({
 	//msg[1].postln;
 	~numLights.do{
 		arg i;
-		~synths[i].set(\tremolo, msg[i+1].linlin(-1.0, 1.0, 1.0, 50.0));
+		//~synths[i].set(\tremolo, msg[i+1].linlin(-1.0, 1.0, 1.0, 50.0));
 	}
 },
 ('/vel_tx')
@@ -129,7 +156,7 @@ OSCFunc({
 	//msg[1].postln;
 	~numLights.do{
 		arg i;
-		~synths[i].set(\detune, msg[i+1].linlin(-1.0, 1.0, 0.9, 1.1));
+		//~synths[i].set(\detune, msg[i+1].linlin(-1.0, 1.0, 0.9, 1.1));
 	}
 },
 ('/vel_ty')
@@ -178,6 +205,6 @@ OSCFunc({
 )
 
 
-~numLights.do{arg i; ~synths[i].set(\amp, 0.4;)};
+~numLights.do{arg i; ~synths[i].set(\amp, 4;)};
 
 ~numLights.do{arg i; ~trigger[i].set(\amp, 3;)};
