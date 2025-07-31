@@ -3,10 +3,13 @@ ServerOptions.devices;
 s.options.outDevice("3- ZOOM AMS-24 Driver");
 s.options.outDevice("External Headphones");
 
-s.options.numOutputBusChannels = 4;
+s.options.numOutputBusChannels = 2;
 s.options.numInputBusChannels = 0;
 
 s.boot;
+
+s.meter;
+s.plotTree;
 
 (
 ///////////////////////////////////
@@ -39,39 +42,43 @@ s.boot;
 
 
 SynthDef(\base, {
-    arg freq=440, amp=1, exc = 0.1, xpos = 0, ypos = 0;
-    var noise, env, mod, rustMod, sig;
-    mod = LFNoise1.kr(0.2).range(-100, 100);
-    rustMod = LFNoise2.kr(1).range(-200, 200) * LFNoise1.kr(3).range(0.2, 0.8);
+    arg freq=440, amp=5, exc = 0.1, xpos = 0, ypos = 0, filter_width = 0.03;
+    var noise, sig;
     noise = WhiteNoise.ar(1) * 0.5 + PinkNoise.ar(1) * 0.5;
-    sig = BPF.ar(noise, freq + mod + rustMod, 0.15);
-    sig = sig.tanh * 0.3 + sig.distort * 0.7; // subtle distortion
-    sig = sig * (1 + SinOsc.kr(0.3, 0, 0.05));
-	sig = sig + Mix(0.07 * RLPF.ar(LFPulse.ar([48,55].midicps, 0.15), SinOsc.kr(0.1, 0, 10, 72).midicps, 0.1, 0.1));
-	sig = sig * exc.lag(0.5) * amp;
-	CombN.ar(sig, 0.31, 0.31, 2, 1, sig);
-	sig = Pan4.ar(sig, xpos, ypos);
+    sig = BPF.ar(noise, freq, filter_width * exc); // wider bandwidth = heavier
+    //sig = sig.tanh * (0.3 - (exc * 0.1)) + sig.distort * (0.7 + (exc * 2)); // more distortion with excitation
+    sig = sig * exc * amp * 10; // exc controls overall volume - 0 = silence
+    //CombN.ar(sig, 0.31, 0.31, 2, 1, sig);
+    sig = Pan4.ar(sig, xpos, ypos);
     Out.ar(0, [sig[3], sig[0], sig[2], sig[1]]);
 }).add;
 
 
 
+
 SynthDef(\trigger, {
-	arg exc = 1, amp = 1, freq = 320, xpos = 0, ypos = 0, dens = 40, dev = 1.1, lfodepth = 300, decay = 0.15, gate = 0;
-    var sig, env, rotated;
+	arg exc = 1, amp = 0.8, freq = 320, xpos = 0, ypos = 0, dens = 40, dev = 1.1, lfodepth = 300, decay = 0.3, gate = 0, delay_vol = 0.5, maxdelaytime = 0.2, delaytime = 0.12, distortion = 0.4, drive = 6.0;
+    var sig, env, rotated, randomFreq;
 	//gate = Impulse.ar(50);
-	env = EnvGen.kr(Env.perc(attackTime:0.01, releaseTime:0.3), gate);
-    sig = SinOsc.ar(freq);
-	//sig = Impulse.ar(40);// * LFNoise0.kr(10, 0.5, 0.5);
+	env = EnvGen.kr(Env.perc(attackTime:0.01, releaseTime:decay), gate);
+	// Generate new random number each time gate triggers
+    randomFreq = TRand.kr(lo: -4.0, hi: 4.0, trig: gate);
+	sig = (0.8 * SinOsc.ar(freq)) + (0.2 * LFSaw.ar((freq/2)+randomFreq));
 	sig = sig * env;
-	//sig = Ringz.ar(sig, [
-	//	LFSaw.kr(dens, 0.0).range(freq - lfodepth, freq),
-	//	LFSaw.kr(dens, 1.0).range(freq, freq + lfodepth) * dev
-	//], decay);
+	// Add distortion before mixing
+    sig = sig * drive; // boost signal before distortion
+    sig = Select.ar(distortion > 0.5, [
+        sig.tanh,              // soft distortion (distortion < 0.5)
+        sig.distort           // hard distortion (distortion >= 0.5)
+    ]);
+    sig = sig * distortion.linlin(0, 1, 1, 0.3); // compensate volume
+
+    sig = Mix.ar(sig) * exc * amp;
+
 	sig = Mix.ar(sig) * exc * amp;
 	sig = FreeVerb.ar(sig);
-	//CombN.ar(sig, 0.31, 0.31, 2, 1, sig);
-	sig = 1 * sig + 0.5 * DelayC.ar(sig,maxdelaytime: 0.2, delaytime: 0.2,mul: 1.0 ,add: 1);
+	//sig = CombN.ar(sig, maxdelaytime, delaytime, 2, 1, sig);
+	sig = sig + (delay_vol * DelayC.ar(sig,maxdelaytime: maxdelaytime, delaytime: delaytime));
 	sig = Pan4.ar(sig, xpos, ypos);
 	Out.ar(0, [sig[3], sig[0], sig[2], sig[1]]);
 }).add;
@@ -102,20 +109,29 @@ SynthDef(\trigger, {
 ~trigger = {arg i; Synth.new(\trigger)}!~numLights;
 
 //change pitches
-~numLights.do{arg i; ~synths[i].set(\freq, 60 + i.linexp(0, 16, 200.0, 2000.0).postln);};
-//~numLights.do{arg i; ~trigger[i].set(\freq, 60 + i.linexp(0, 16, 200.0, 600.0));};
-
 ~dorianScale = [0, 3, 2, 7, 5, 10, 9];
+~pentatonicScale = [0, 5, 3, 10, 7];
+~scale = ~pentatonicScale;
+
+~numLights.do{arg i; ~synths[i].set(\freq, 200 + i.linexp(0, 16, 200.0, 2000.0).postln);};
+
 ~numLights.do{arg i;
-    var degree = i % 7;
-    var octave = (i / 7).floor;
-    var midiNote = ~dorianScale[degree] + 60 + (octave * 12);
+    var degree = i % 5;
+    var octave = (i / 5).floor;
+    var midiNote = ~scale[degree] + 60 + (octave * 12);
+    ~synths[i].set(\freq, midiNote.midicps);
+};
+
+
+~numLights.do{arg i;
+    var degree = i % 5;
+    var octave = (i / 5).floor;
+    var midiNote = ~scale[degree] + 48 + (octave * 12);
     ~trigger[i].set(\freq, midiNote.midicps);
 };
 
 
-s.meter;
-s.plotTree;
+
 ~trigger[1].set(\gate,1);
 
 
@@ -131,8 +147,8 @@ OSCFunc({
 	//msg[1].postln;
 	~numLights.do{
 		arg i;
-		~synths[i].set(\exc, msg[i+1].lincurve(0,1,0,1,0));
-		~trigger[i].set(\exc, msg[i+1]);
+		~synths[i].set(\exc, msg[i+1]);
+		//~trigger[i].set(\exc, msg[i+1]);
 	}
 },
 ('/vel')
@@ -206,8 +222,64 @@ OSCFunc({
 
 )
 
+(
+var synth, window, ampSlider, filterSlider, triggerAmpSlider, triggerFreqSlider, triggerDecaySlider;
+
+
+// Create window
+window = Window("Synth Controls", Rect(100, 100, 350, 600));
+window.view.decorator = FlowLayout(window.view.bounds);
+
+// BASE SYNTH CONTROLS
+StaticText(window, 330@25).string_("=== BASE SYNTH ===").align_(\center);
+
+// Amp control
+StaticText(window, 330@20).string_("Amplitude");
+ampSlider = EZSlider(window, 330@30, "Amp", ControlSpec(0, 10, \lin, 0.1, 5),
+    { |slider| ~numLights.do{arg i; ~synths[i].set(\amp, slider.value);}; });
+
+// Filter width control
+StaticText(window, 330@20).string_("Filter Width");
+filterSlider = EZSlider(window, 330@30, "Filter", ControlSpec(0.01, 0.1, \lin, 0.001, 0.03),
+    { |slider| ~numLights.do{arg i; ~synths[i].set(\filter_width, slider.value);}; });
+
+// TRIGGER SYNTH CONTROLS
+StaticText(window, 330@25).string_("=== TRIGGER SYNTH ===").align_(\center);
+
+// Trigger Amp control
+StaticText(window, 330@20).string_("Amplitude");
+triggerAmpSlider = EZSlider(window, 330@30, "T-Amp", ControlSpec(0, 5, \lin, 0.1, 1),
+    { |slider| ~numLights.do{arg i; ~trigger[i].set(\amp, slider.value;)}; });
+
+
+// Trigger Decay control
+StaticText(window, 330@20).string_("Decay");
+triggerDecaySlider = EZSlider(window, 330@30, "T-Decay", ControlSpec(0.01, 1.0, \lin, 0.01, 0.3),
+	{ |slider| ~numLights.do{arg i; ~trigger[i].set(\decay, slider.value;)}; });
+
+// Delay max time
+StaticText(window, 330@20).string_("Delay");
+
+triggerDecaySlider = EZSlider(window, 330@30, "Vol", ControlSpec(0.01, 1.0, \lin, 0.01, 0.5),
+	{ |slider| ~numLights.do{arg i; ~trigger[i].set(\delay_vol, slider.value;)}; });
+
+triggerDecaySlider = EZSlider(window, 330@30, "MaxTime", ControlSpec(0.01, 10.0, \lin, 0.01, 0.2),
+	{ |slider| ~numLights.do{arg i; ~trigger[i].set(\maxdelaytime, slider.value;)}; });
+
+// Delay time
+triggerDecaySlider = EZSlider(window, 330@30, "Time", ControlSpec(0.01, 1.0, \lin, 0.01, 0.2),
+	{ |slider| ~numLights.do{arg i; ~trigger[i].set(\delaytime, slider.value;)}; });
+
+// Close action
+window.onClose_({ synth.free });
+
+// Show window
+window.front;
+)
+
 0.8.lincurve(0,1,0,1,2);
 
-~numLights.do{arg i; ~synths[i].set(\amp, 2;)};
+~numLights.do{arg i; ~synths[i].set(\speed, 10;)};
+~numLights.do{arg i; ~synths[i].set(\amp, 100;)};
 
-~numLights.do{arg i; ~trigger[i].set(\amp, 0.5;)};
+~numLights.do{arg i; ~trigger[i].set(\amp, 0;)};
