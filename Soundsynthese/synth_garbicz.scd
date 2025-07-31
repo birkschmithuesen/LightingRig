@@ -39,7 +39,7 @@ s.boot;
 
 
 SynthDef(\base, {
-    arg freq=440, amp=4, exc = 0.1, xpos = 0, ypos = 0;
+    arg freq=440, amp=1, exc = 0.1, xpos = 0, ypos = 0;
     var noise, env, mod, rustMod, sig;
     mod = LFNoise1.kr(0.2).range(-100, 100);
     rustMod = LFNoise2.kr(1).range(-200, 200) * LFNoise1.kr(3).range(0.2, 0.8);
@@ -47,8 +47,9 @@ SynthDef(\base, {
     sig = BPF.ar(noise, freq + mod + rustMod, 0.15);
     sig = sig.tanh * 0.3 + sig.distort * 0.7; // subtle distortion
     sig = sig * (1 + SinOsc.kr(0.3, 0, 0.05));
-	sig = sig * exc;
-	//sig = sig + RLPF.ar(LFPulse.ar([48,55].midicps, 0.15), SinOsc.kr(0.1, 0, 10, 72).midicps, 0.1, 0.1);
+	sig = sig + Mix(0.07 * RLPF.ar(LFPulse.ar([48,55].midicps, 0.15), SinOsc.kr(0.1, 0, 10, 72).midicps, 0.1, 0.1));
+	sig = sig * exc.lag(0.5) * amp;
+	CombN.ar(sig, 0.31, 0.31, 2, 1, sig);
 	sig = Pan4.ar(sig, xpos, ypos);
     Out.ar(0, [sig[3], sig[0], sig[2], sig[1]]);
 }).add;
@@ -59,17 +60,18 @@ SynthDef(\trigger, {
 	arg exc = 1, amp = 1, freq = 320, xpos = 0, ypos = 0, dens = 40, dev = 1.1, lfodepth = 300, decay = 0.15, gate = 0;
     var sig, env, rotated;
 	//gate = Impulse.ar(50);
-	env = EnvGen.kr(Env.perc(attackTime:0.01, releaseTime:0.1), gate);
-    //sig = SinOsc.ar(freq, 0, 0.1);
-	sig = Impulse.ar(40);// * LFNoise0.kr(10, 0.5, 0.5);
+	env = EnvGen.kr(Env.perc(attackTime:0.01, releaseTime:0.3), gate);
+    sig = SinOsc.ar(freq);
+	//sig = Impulse.ar(40);// * LFNoise0.kr(10, 0.5, 0.5);
 	sig = sig * env;
-	sig = Ringz.ar(sig, [
-		LFSaw.kr(dens, 0.0).range(freq - lfodepth, freq),
-		LFSaw.kr(dens, 1.0).range(freq, freq + lfodepth) * dev
-	], decay);
+	//sig = Ringz.ar(sig, [
+	//	LFSaw.kr(dens, 0.0).range(freq - lfodepth, freq),
+	//	LFSaw.kr(dens, 1.0).range(freq, freq + lfodepth) * dev
+	//], decay);
 	sig = Mix.ar(sig) * exc * amp;
 	sig = FreeVerb.ar(sig);
-	CombN.ar(sig, 0.31, 0.31, 2, 1, sig);
+	//CombN.ar(sig, 0.31, 0.31, 2, 1, sig);
+	sig = 1 * sig + 0.5 * DelayC.ar(sig,maxdelaytime: 0.2, delaytime: 0.2,mul: 1.0 ,add: 1);
 	sig = Pan4.ar(sig, xpos, ypos);
 	Out.ar(0, [sig[3], sig[0], sig[2], sig[1]]);
 }).add;
@@ -100,10 +102,10 @@ SynthDef(\trigger, {
 ~trigger = {arg i; Synth.new(\trigger)}!~numLights;
 
 //change pitches
-~numLights.do{arg i; ~synths[i].set(\freq, 60 + i.linexp(0, 16, 1.0, 500.0).postln);};
+~numLights.do{arg i; ~synths[i].set(\freq, 60 + i.linexp(0, 16, 200.0, 2000.0).postln);};
 //~numLights.do{arg i; ~trigger[i].set(\freq, 60 + i.linexp(0, 16, 200.0, 600.0));};
 
-~dorianScale = [0, 2, 3, 5, 7, 9, 10];
+~dorianScale = [0, 3, 2, 7, 5, 10, 9];
 ~numLights.do{arg i;
     var degree = i % 7;
     var octave = (i / 7).floor;
@@ -126,10 +128,10 @@ s.plotTree;
 OSCFunc({
 	arg msg;
 	var val;
-	msg[1].postln;
+	//msg[1].postln;
 	~numLights.do{
 		arg i;
-		~synths[i].set(\exc, msg[i+1]);
+		~synths[i].set(\exc, msg[i+1].lincurve(0,1,0,1,0));
 		~trigger[i].set(\exc, msg[i+1]);
 	}
 },
@@ -166,7 +168,7 @@ OSCFunc({
 OSCFunc({
 	arg msg;
 	var val;
-	msg[1].postln;
+	//msg[1].postln;
 	~numLights.do{
 		arg i;
 		~synths[i].set(\xpos, msg[i+1]);
@@ -204,7 +206,8 @@ OSCFunc({
 
 )
 
+0.8.lincurve(0,1,0,1,2);
 
-~numLights.do{arg i; ~synths[i].set(\amp, 4;)};
+~numLights.do{arg i; ~synths[i].set(\amp, 2;)};
 
-~numLights.do{arg i; ~trigger[i].set(\amp, 3;)};
+~numLights.do{arg i; ~trigger[i].set(\amp, 0.5;)};
