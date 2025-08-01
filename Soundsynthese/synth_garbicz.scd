@@ -23,22 +23,7 @@ s.plotTree;
 // Synth Def
 ///////////////////////////////////
 
-/*SynthDef(\base, {
-	arg freq = 200, detune = 1.01, amp = 0.01, tremolo = 10, exc = 0.1, xpos = 0, ypos = 0;
-	var sig;
-	//tremolo = In.kr(~tilt_degree).linlin(0,1,5,100);
-	//detune = In.kr(~pan_degree).linlin(0,1,1.01,2.0);
-	//amp = In.kr(~tilt_speed);
-	//tremolo = MouseY.kr(5, 200, 1);
-	amp = (0.5 + SinOsc.kr(tremolo * 0.5)) * amp;
-	//detune = MouseY.kr(1.01, 2.0);
-	//amp = Saw.kr({ExpRand(1,3)}!2).range(0.2, 1) * amp;
-	sig = Mix.ar({LFPulse.ar(freq * Rand(-1.0, 1.0).range(detune.reciprocal, detune))}!4);
-	sig = sig * amp * exc;
-	sig = FreeVerb.ar(sig);
-	sig = Pan4.ar(sig, xpos, ypos);
-	Out.ar(0, [sig[3], sig[0], sig[2], sig[1]]);
-}).add;*/
+
 
 
 SynthDef(\base, {
@@ -57,44 +42,28 @@ SynthDef(\base, {
 
 
 SynthDef(\trigger, {
-	arg exc = 1, amp = 0.8, freq = 320, xpos = 0, ypos = 0, dens = 40, dev = 1.1, lfodepth = 300, decay = 0.3, gate = 0, delay_vol = 0.5, maxdelaytime = 0.2, delaytime = 0.12, distortion = 0.4, drive = 6.0;
+	arg exc = 1.2, freq = 320, xpos = 0, ypos = 0, dens = 40, dev = 1.1, lfodepth = 300, decay = 0.3, gate = 0, delay_vol = 0.5, maxdelaytime = 0.2, delaytime = 0.12, distortion = 0.4, drive = 6.0, atk=0.1, sus=0.1, rel=5, c1=1, c2=(-1), detune=0.2, pan=0, cfmin=800, cfmax=800, rqmin=0.005, rqmax=0.008, lsf=200, ldb=0, amp=3, out=0, cfhzmin=0.1, cfhzmax=0.3;
     var sig, env, rotated, randomFreq;
-	//gate = Impulse.ar(50);
-	env = EnvGen.kr(Env.perc(attackTime:0.01, releaseTime:decay), gate);
-	// Generate new random number each time gate triggers
-    randomFreq = TRand.kr(lo: -4.0, hi: 4.0, trig: gate);
-	sig = (0.8 * SinOsc.ar(freq)) + (0.2 * LFSaw.ar((freq/2)+randomFreq));
-	sig = sig * env;
-	// Add distortion before mixing
-    sig = sig * drive; // boost signal before distortion
-    sig = Select.ar(distortion > 0.5, [
-        sig.tanh,              // soft distortion (distortion < 0.5)
-        sig.distort           // hard distortion (distortion >= 0.5)
-    ]);
-    sig = sig * distortion.linlin(0, 1, 1, 0.3); // compensate volume
-
-    sig = Mix.ar(sig) * exc * amp;
-
-	sig = Mix.ar(sig) * exc * amp;
-	sig = FreeVerb.ar(sig);
-	//sig = CombN.ar(sig, maxdelaytime, delaytime, 2, 1, sig);
-	sig = sig + (delay_vol * DelayC.ar(sig,maxdelaytime: maxdelaytime, delaytime: delaytime));
+	cfmin = freq;
+	cfmax = freq;
+	env = EnvGen.kr(Env.perc(attackTime:0.01, releaseTime:0.4), gate);
+	sig = Saw.ar(freq * {LFNoise1.kr(0.5,detune).midiratio}!2);
+	sig = BPF.ar(
+		sig,
+		{LFNoise1.kr(
+			LFNoise1.kr(4).exprange(cfhzmin, cfhzmax)
+		).exprange(cfmin, cfmax)}!2,
+		{LFNoise1.kr(0.1).exprange(rqmin, rqmax)}!2
+	);
+	sig =BLowShelf.ar(sig, lsf, 0.5, ldb);
+	sig = Balance2.ar(sig[0], sig[1], pan);
+	sig = Mix(sig * env * amp);
 	sig = Pan4.ar(sig, xpos, ypos);
 	Out.ar(0, [sig[3], sig[0], sig[2], sig[1]]);
 }).add;
 
 
-/*
-SynthDef(\trigger, {
-	arg amp = 0.2, gate = 0, freq = 400, xpos = 0, ypos = 0;
-    var sig, env;
-	env = EnvGen.kr(Env.perc(attackTime:0.01, releaseTime:0.1), gate);:
-    sig = SinOsc.ar(freq, 0, 0.1);
-	sig = sig * env * amp;
-	sig = Pan4.ar(sig, xpos, ypos);
-    Out.ar(0, sig)
-}).add;
-*/
+
 
 
 ///////////////////////////////////
@@ -283,3 +252,66 @@ window.front;
 ~numLights.do{arg i; ~synths[i].set(\amp, 100;)};
 
 ~numLights.do{arg i; ~trigger[i].set(\amp, 0;)};
+
+
+
+/*SynthDef(\base, {
+	arg freq = 200, detune = 1.01, amp = 0.01, tremolo = 10, exc = 0.1, xpos = 0, ypos = 0;
+	var sig;
+	//tremolo = In.kr(~tilt_degree).linlin(0,1,5,100);
+	//detune = In.kr(~pan_degree).linlin(0,1,1.01,2.0);
+	//amp = In.kr(~tilt_speed);
+	//tremolo = MouseY.kr(5, 200, 1);
+	amp = (0.5 + SinOsc.kr(tremolo * 0.5)) * amp;
+	//detune = MouseY.kr(1.01, 2.0);
+	//amp = Saw.kr({ExpRand(1,3)}!2).range(0.2, 1) * amp;
+	sig = Mix.ar({LFPulse.ar(freq * Rand(-1.0, 1.0).range(detune.reciprocal, detune))}!4);
+	sig = sig * amp * exc;
+	sig = FreeVerb.ar(sig);
+	sig = Pan4.ar(sig, xpos, ypos);
+	Out.ar(0, [sig[3], sig[0], sig[2], sig[1]]);
+}).add;*/
+
+
+
+/* V2
+SynthDef(\trigger, {
+	arg exc = 1, amp = 0.8, freq = 320, xpos = 0, ypos = 0, dens = 40, dev = 1.1, lfodepth = 300, decay = 0.3, gate = 0, delay_vol = 0.5, maxdelaytime = 0.2, delaytime = 0.12, distortion = 0.4, drive = 6.0;
+    var sig, env, rotated, randomFreq;
+	//gate = Impulse.ar(50);
+	env = EnvGen.kr(Env.perc(attackTime:0.01, releaseTime:decay), gate);
+	// Generate new random number each time gate triggers
+    randomFreq = TRand.kr(lo: -4.0, hi: 4.0, trig: gate);
+	sig = (0.8 * SinOsc.ar(freq)) + (0.2 * LFSaw.ar((freq/2)+randomFreq));
+	sig = sig * env;
+	// Add distortion before mixing
+    sig = sig * drive; // boost signal before distortion
+    sig = Select.ar(distortion > 0.5, [
+        sig.tanh,              // soft distortion (distortion < 0.5)
+        sig.distort           // hard distortion (distortion >= 0.5)
+    ]);
+    sig = sig * distortion.linlin(0, 1, 1, 0.3); // compensate volume
+
+    sig = Mix.ar(sig) * exc * amp;
+
+	sig = Mix.ar(sig) * exc * amp;
+	sig = FreeVerb.ar(sig);
+	//sig = CombN.ar(sig, maxdelaytime, delaytime, 2, 1, sig);
+	sig = sig + (delay_vol * DelayC.ar(sig,maxdelaytime: maxdelaytime, delaytime: delaytime));
+	sig = Pan4.ar(sig, xpos, ypos);
+	Out.ar(0, [sig[3], sig[0], sig[2], sig[1]]);
+}).add;*/
+
+/* V1
+SynthDef(\trigger, {
+	arg amp = 0.2, gate = 0, freq = 400, xpos = 0, ypos = 0;
+    var sig, env;
+	env = EnvGen.kr(Env.perc(attackTime:0.01, releaseTime:0.1), gate);:
+    sig = SinOsc.ar(freq, 0, 0.1);
+	sig = sig * env * amp;
+	sig = Pan4.ar(sig, xpos, ypos);
+    Out.ar(0, sig)
+}).add;
+*/
+
+
