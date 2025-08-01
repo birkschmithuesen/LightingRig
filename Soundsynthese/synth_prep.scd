@@ -2,6 +2,8 @@ s.meter;
 s.plotTree;
 
 
+
+
 (
 SynthDef(\pipeWind1, {
     arg freq=440, amp=0.2, pan=0, gate=1;
@@ -36,17 +38,36 @@ SynthDef(\pipeWind2, {
 
 x = Synth(\pipeWind2, [\freq, 400, \amp, 5]);
 
+(
 SynthDef(\bell, {
-    arg freq=440, amp=0.2, pan=0;
-    var env, sig, overtone, shimmer, delay;
-    overtone = SinOsc.ar(freq * 2, 0, 0.2) + SinOsc.ar(freq * 3, 0, 0.1);
-    shimmer = HPF.ar(WhiteNoise.ar(0.1), freq * 2) * EnvGen.kr(Env.perc(0.01, 0.3));
-    sig = SinOsc.ar(freq) * 0.4 + overtone + shimmer;
-    env = EnvGen.kr(Env.perc(0.01, 1), doneAction: 2); // fast attack, 1s decay
-    //delay = CombN.ar(sig, 0.2, 0.1, 1.5) * 0.2;
-    sig = (sig * env * amp) + (DelayN.ar(sig, 0.1, 0.1).tanh * 0.2);// + delay;
-    Out.ar(0, Pan2.ar(sig, pan));
+    arg freq=440, amp=1, gate=0, decay = 1, freqs = #[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rings = #[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], atk = 5, sus = 8, rel = 5;
+    var env, sig;
+	freqs = {2000.0.rrand(100)}.dup(12);
+	rings = {0.1.rrand(2)}.dup(12);
+	//env = EnvGen.kr(Env.linen(atk, sus, rel, 1, 4), doneAction: Done.freeSelf);
+	env = EnvGen.ar(Env.perc(attackTime:0.01, releaseTime:decay), doneAction: Done.freeSelf);
+	sig = Decay.ar(Impulse.ar(0.1), 0.0, ClipNoise.ar(0.01));
+	sig = Klank.ar(`[freqs, nil, rings], sig)*env;
+	Out.ar(0, [sig, sig]);
 }).add;
+)
+
 
 x = Synth(\bell, [\freq, 660, \amp, 0.4]);
+
+
+x = Synth(\trigger, [\freq, 660, \amp, 0.4]);
+x.set(\gate,1);
+
 x.set(\gate, 0);
+
+
+(
+play({
+    Klank.ar(`[
+        [1, 1071/800, 1253/800, 1723/800]*300,         // frequencies
+        nil,                             // amplitudes (default to 1.0)
+        [1, 1, 1, 1]               // ring times
+        ], Decay.ar(Impulse.ar(4), 0.01, ClipNoise.ar(0.1)))
+})
+)
