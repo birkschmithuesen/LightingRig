@@ -3,13 +3,39 @@ ServerOptions.devices;
 s.options.outDevice("3- ZOOM AMS-24 Driver");
 s.options.outDevice("External Headphones");
 
-s.options.numOutputBusChannels = 2;
+s.options.numOutputBusChannels = 4;
 s.options.numInputBusChannels = 0;
 
 s.boot;
 
 s.meter;
 s.plotTree;
+
+
+// Create 4 recorders (needs to be done just once in a session):
+(
+~recs = Recorder.new(s).dup(4)
+~counter = 0;
+)
+
+// START ALL MONO RECORDERS (chans 0, 1, 2, 3)
+(
+var basicPath = "~/recordings/"+~counter; // customize this
+~counter = ~counter + 1;
+~recs.do({ arg thisRecorder, index;
+	var fileName = "test" ++ index ++ ".wav";
+
+	thisRecorder.record(
+		path: basicPath ++ fileName,
+		bus: index,
+		numChannels: 1 // mono
+	);
+})
+)
+
+// Stop all recorders
+~recs.do({ arg thisRecorder; thisRecorder.stopRecording })
+
 
 (
 ///////////////////////////////////
