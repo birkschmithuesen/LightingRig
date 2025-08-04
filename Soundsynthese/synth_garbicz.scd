@@ -6,6 +6,7 @@ s.options.outDevice("External Headphones");
 s.options.numOutputBusChannels = 4;
 s.options.numInputBusChannels = 0;
 
+s.options.hardwareBufferSize = 256;
 s.boot;
 
 s.meter;
@@ -14,8 +15,8 @@ s.plotTree;
 
 // Create 4 recorders (needs to be done just once in a session):
 (
-~recs = Recorder.new(s).dup(4)
-~counter = 0;
+~recs = Recorder.new(s).dup(4);
+~counter = 10;
 )
 
 // START ALL MONO RECORDERS (chans 0, 1, 2, 3)
@@ -53,7 +54,7 @@ var basicPath = "~/recordings/"+~counter; // customize this
 
 
 SynthDef(\base, {
-    arg freq=440, amp=5, exc = 0.1, xpos = 0, ypos = 0, filter_width = 0.03;
+    arg freq=440, amp=1, exc = 0.1, xpos = 0, ypos = 0, filter_width = 0.03;
     var noise, sig;
     noise = WhiteNoise.ar(1) * 0.5 + PinkNoise.ar(1) * 0.5;
     sig = BPF.ar(noise, freq, filter_width * exc); // wider bandwidth = heavier
@@ -68,7 +69,7 @@ SynthDef(\base, {
 
 
 SynthDef(\trigger, {
-	arg exc = 1.2, freq = 320, xpos = 0, ypos = 0, dens = 40, dev = 1.1, lfodepth = 300, decay = 0.3, gate = 0, delay_vol = 0.5, maxdelaytime = 0.2, delaytime = 0.12, distortion = 0.4, drive = 6.0, atk=0.1, sus=0.1, rel=5, c1=1, c2=(-1), detune=0.2, pan=0, cfmin=800, cfmax=800, rqmin=0.005, rqmax=0.008, lsf=200, ldb=0, amp=3, out=0, cfhzmin=0.1, cfhzmax=0.3;
+	arg exc = 1.2, freq = 320, xpos = 0, ypos = 0, dens = 40, dev = 1.1, lfodepth = 300, decay = 0.3, gate = 0, delay_vol = 0.5, maxdelaytime = 0.2, delaytime = 0.12, distortion = 0.4, drive = 6.0, atk=0.1, sus=0.1, rel=5, c1=1, c2=(-1), detune=0.2, pan=0, cfmin=800, cfmax=800, rqmin=0.005, rqmax=0.008, lsf=200, ldb=0, amp=0.8, out=0, cfhzmin=0.1, cfhzmax=0.3;
     var sig, env, rotated, randomFreq;
 	cfmin = freq;
 	cfmax = freq;
